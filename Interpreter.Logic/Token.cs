@@ -1,24 +1,5 @@
 ﻿namespace InterpreterDyZ;
 
-public enum TokenTypes {
-    #region Types of Datas
-    INTEGER,
-    #endregion
-
-    #region Binarys Operators
-    PLUS, MINUS, MULT, DIV,
-    #endregion
-
-    #region Symbols
-    L_PARENT, R_PARENT, L_BRACKET, R_BRACKET,
-    L_MARKS, R_MARKS,
-    #endregion
-
-    #region Auxiliars Operators
-    EOF
-    #endregion
-}
-
 public class Token
 {
     public TokenTypes? Type;
@@ -36,8 +17,36 @@ public class Token
         Value = other.Value;
     }
 
-    public string View()
+    public string Show()
     {
         return $"Token({Type}, {Value})";
+    }
+}
+
+public class ReservateKeywords
+{
+    public Dictionary<string, TokenTypes> Keyword;
+    public Dictionary<string, object> Variables;
+
+    public ReservateKeywords()
+    {
+        Keyword = new Dictionary<string, TokenTypes>();
+        Variables = new Dictionary<string, object>();
+
+        Keyword.Add("Internal", TokenTypes.INTERNAL);
+        Keyword.Add("States", TokenTypes.STATES);
+        Keyword.Add("Models", TokenTypes.MODELS);
+        Keyword.Add("@Internal", TokenTypes.INTERNAL);
+        Keyword.Add("main", TokenTypes.MAIN);
+        Keyword.Add("int", TokenTypes.INTEGER);
+        Keyword.Add("float", TokenTypes.FLOAT);
+        Keyword.Add("bool", TokenTypes.BOOLEAN);
+        Keyword.Add("string", TokenTypes.STRING);
+        Keyword.Add("if", TokenTypes.IF);
+        Keyword.Add("True", TokenTypes.TRUE);
+        Keyword.Add("False", TokenTypes.FALSE);
+        Keyword.Add("while", TokenTypes.WHILE);
+        Keyword.Add("ShowLine", TokenTypes.SHOWLINE);
+        Keyword.Add("return", TokenTypes.RETURN);
     }
 }

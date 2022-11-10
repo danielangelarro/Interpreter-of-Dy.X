@@ -1,3 +1,4 @@
+using System.Reflection.Emit;
 namespace InterpreterDyZ;
 
 public class Parser
@@ -11,13 +12,15 @@ public class Parser
         CurrentToken = lexer.GetNextToken();
     }
 
-    private void Error()
+    private void Error(string error="Caracter inválido")
     {
-        throw new Exception("Caracter inválido");
+        throw new Exception(error);
     }
 
     private void Process(TokenTypes type)
     {
+        Console.WriteLine($"{CurrentToken.Show()} {type}");
+
         if(CurrentToken.Type == type)
 
             CurrentToken = Lexer.GetNextToken();
@@ -34,6 +37,14 @@ public class Parser
 
         switch (token.Type)
         {
+            case TokenTypes.ID:
+
+                Process(TokenTypes.ID);
+                
+                node = new Var(token);
+
+                break;
+
             case TokenTypes.PLUS:
 
                 Process(TokenTypes.PLUS);
@@ -58,11 +69,51 @@ public class Parser
             
                 break;
 
+            case TokenTypes.FLOAT:
+
+                Process(TokenTypes.FLOAT);
+                
+                node = new Num(token);
+            
+                break;
+            
+            case TokenTypes.BOOLEAN:
+
+                Process(TokenTypes.BOOLEAN);
+                
+                node = new Bool(token);
+            
+                break;
+            
+            case TokenTypes.STRING:
+
+                Process(TokenTypes.STRING);
+                
+                node = new Cadene(token);
+            
+                break;
+
+            case TokenTypes.TRUE:
+
+                Process(TokenTypes.TRUE);
+                
+                node = new Bool(new Token(TokenTypes.TRUE, true));
+            
+                break;
+
+            case TokenTypes.FALSE:
+
+                Process(TokenTypes.FALSE);
+                
+                node = new Bool(new Token(TokenTypes.FALSE, false));
+            
+                break;
+            
             case TokenTypes.L_PARENT:
 
                 Process(TokenTypes.L_PARENT);
                 
-                node = Expression();
+                node = Compounds();
                 
                 Process(TokenTypes.R_PARENT);
 
@@ -77,7 +128,8 @@ public class Parser
         AST node = Factor();
         Token token = new Token(CurrentToken);
 
-        while (CurrentToken.Type == TokenTypes.MULT || CurrentToken.Type == TokenTypes.DIV)
+        while (CurrentToken.Type == TokenTypes.MULT || CurrentToken.Type == TokenTypes.INTEGER_DIV
+                || CurrentToken.Type == TokenTypes.FLOAT_DIV || CurrentToken.Type == TokenTypes.MOD)
         {
             token = new Token(CurrentToken);
 
@@ -85,10 +137,18 @@ public class Parser
                 
                 Process(TokenTypes.MULT);
             
-            else if (token.Type == TokenTypes.DIV)
+            else if (token.Type == TokenTypes.INTEGER_DIV)
                 
-                Process(TokenTypes.DIV);
+                Process(TokenTypes.INTEGER_DIV);
             
+            else if (token.Type == TokenTypes.FLOAT_DIV)
+                
+                Process(TokenTypes.FLOAT_DIV);
+            
+            else if (token.Type == TokenTypes.MOD)
+                
+                Process(TokenTypes.MOD);
+
             node = new BinaryOperator(node, token, Factor());
         }
 
@@ -120,9 +180,264 @@ public class Parser
         return node;
     }
 
-    public AST Parse()
+    private bool IsBooleanOperator()
+    {
+        Token type = CurrentToken;
+
+        return type.Type == TokenTypes.SAME || type.Type == TokenTypes.DIFFERENT ||
+                type.Type == TokenTypes.LESS || type.Type == TokenTypes.GREATER ||
+                type.Type == TokenTypes.LESS_EQUAL || type.Type == TokenTypes.GREATER_EQUAL ||
+                type.Type == TokenTypes.NOX;
+    }
+
+    private AST Comparer()
     {
         AST node = Expression();
+        Token token = new Token(CurrentToken);
+
+        while (IsBooleanOperator())
+        {
+            token = new Token(CurrentToken);
+
+            if (token.Type == TokenTypes.SAME)
+                
+                Process(TokenTypes.SAME);
+            
+            else if (token.Type == TokenTypes.DIFFERENT)
+                
+                Process(TokenTypes.DIFFERENT);
+            
+            else if (token.Type == TokenTypes.LESS)
+                
+                Process(TokenTypes.LESS);
+            
+            else if (token.Type == TokenTypes.LESS_EQUAL)
+                
+                Process(TokenTypes.LESS_EQUAL);
+            
+            else if (token.Type == TokenTypes.GREATER)
+                
+                Process(TokenTypes.GREATER);
+            
+            else if (token.Type == TokenTypes.GREATER_EQUAL)
+                
+                Process(TokenTypes.GREATER_EQUAL);
+            
+            else if (token.Type == TokenTypes.NOX)
+                
+                Process(TokenTypes.NOX);
+        
+            node = new BinaryOperator(node, token, Expression());
+        }
+
+
+        return node;
+    }
+
+    private AST Compounds()
+    {
+        AST node = Comparer();
+        Token token = new Token(CurrentToken);
+
+        while (CurrentToken.Type == TokenTypes.AND || CurrentToken.Type == TokenTypes.OR)
+        {
+            token = new Token(CurrentToken);
+
+            if (token.Type == TokenTypes.AND)
+                
+                Process(TokenTypes.AND);
+            
+            else if (token.Type == TokenTypes.OR)
+                
+                Process(TokenTypes.OR);
+            
+            node = new BinaryOperator(node, token, Comparer());
+        }
+
+
+        return node;
+    }
+
+    private AST Empty()
+    {
+        return new Empty();
+    }
+
+    private AST Variable()
+    {
+        AST node = new Var(CurrentToken);
+        Process(TokenTypes.ID);
+
+        return node;
+    }
+
+    private AST Assignment()
+    {
+
+        AST node = Variable();
+        Token token = new Token(CurrentToken);
+
+        Process(TokenTypes.ASSIGN);
+
+        return new Assign((Var)node, token, Compounds());
+    }
+
+    private AST Conditional()
+    {
+        Process(TokenTypes.IF);
+        Process(TokenTypes.L_PARENT);
+
+        AST node = Compounds();
+
+        Process(TokenTypes.R_PARENT);
+        Process(TokenTypes.L_KEYS);
+        
+        node = new Condition(node, StatementList());
+        
+        Process(TokenTypes.R_KEYS);
+
+        return node;
+    }
+
+    private AST Cicle()
+    {
+        Process(TokenTypes.WHILE);
+        Process(TokenTypes.L_PARENT);
+
+        AST node = Compounds();
+
+        Process(TokenTypes.R_PARENT);
+        Process(TokenTypes.L_KEYS);
+        
+        node = new Cicle(node, StatementList());
+        
+        Process(TokenTypes.R_KEYS);
+
+        return node;
+    }
+
+    // TODO: hacer por otra via
+    private AST Declaration()
+    {
+        Declarations declarations = new Declarations();
+
+        TokenTypes type = (TokenTypes)(TypeData());
+
+        declarations.Commands.Add(new VarDecl(new Var(CurrentToken), type));
+        Process(TokenTypes.ID);
+
+        while (CurrentToken.Type == TokenTypes.COMMA)
+        {
+            Process(TokenTypes.COMMA);
+
+            declarations.Commands.Add(new VarDecl(new Var(CurrentToken), type));
+
+            Process(TokenTypes.ID);
+        }
+
+        return declarations;
+    }
+
+    private bool IsDataType()
+    {
+        return CurrentToken.Type == TokenTypes.INTEGER || CurrentToken.Type == TokenTypes.FLOAT 
+                || CurrentToken.Type == TokenTypes.BOOLEAN || CurrentToken.Type == TokenTypes.STRING;
+    }
+
+    private AST Statement()
+    {
+        AST node = Empty();
+
+        if (CurrentToken.Type == TokenTypes.L_PARENT)
+        {
+            Process(TokenTypes.L_PARENT);
+
+            Statement();
+
+            Process(TokenTypes.R_PARENT);
+        }
+
+        if ( IsDataType() )
+
+            node = Declaration();
+
+        else if (CurrentToken.Type == TokenTypes.ID)
+
+            node = Assignment();
+        
+        else if (CurrentToken.Type == TokenTypes.IF)
+
+            node = Conditional();
+        
+        else if (CurrentToken.Type == TokenTypes.WHILE)
+
+            node = Cicle();
+
+        return node;
+    }
+
+    private AST StatementList()
+    {
+        Instructions instructions = new Instructions();
+        instructions.Commands.Add(Statement());
+
+        while (CurrentToken.Type == TokenTypes.SEMI)
+        {
+            Process(TokenTypes.SEMI);
+            instructions.Commands.Add(Statement());
+        }
+
+        return instructions;
+    }
+
+    private TokenTypes TypeData()
+    {
+        TokenTypes token = TokenTypes.INTEGER;
+
+        if (CurrentToken.Type == TokenTypes.INTEGER)
+        {
+            Process(TokenTypes.INTEGER);
+            token = TokenTypes.INTEGER;
+        }
+
+        else if (CurrentToken.Type == TokenTypes.FLOAT)
+        {
+            Process(TokenTypes.FLOAT);
+            token = TokenTypes.FLOAT;
+        }
+
+        else if (CurrentToken.Type == TokenTypes.BOOLEAN)
+        {
+            Process(TokenTypes.BOOLEAN);
+            token = TokenTypes.BOOLEAN;
+        }
+
+        else if (CurrentToken.Type == TokenTypes.STRING)
+        {
+            Process(TokenTypes.STRING);
+            token = TokenTypes.STRING;
+        }
+
+        return token;
+    }
+
+    private AST Block()
+    {
+        Process(TokenTypes.MAIN);
+        Process(TokenTypes.L_KEYS);
+        
+        AST node = StatementList();
+
+        Process(TokenTypes.R_KEYS);
+
+        return node;
+    }
+
+    // TODO: *import* y *export*
+
+    public AST Parse()
+    {
+        AST node = Block();
 
         if (CurrentToken.Type != TokenTypes.EOF)
             

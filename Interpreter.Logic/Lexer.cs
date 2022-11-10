@@ -5,17 +5,30 @@ public class Lexer
     string? Text;
     int Pos;
     char? CurrentChar;
+    ReservateKeywords? key;
 
     public Lexer(string text)
     {
         Text = text;
         Pos = 0;
         CurrentChar = text[Pos];
+        key = new ReservateKeywords();
     }
 
-    private void Error()
+    private void Error(string error = "Sintáxis inválido")
     {
-        throw new Exception("Caracter inválido");
+        throw new Exception(error);
+    }
+
+    private char? SeekNextChar()
+    {
+        int pos = Pos + 1;
+
+        if (pos == Text.Length)
+
+            return null;
+        
+        return Text[pos];
     }
 
     private void Next()
@@ -33,44 +46,119 @@ public class Lexer
 
     private void SkipSpace()
     {
-        while (CurrentChar != null && CurrentChar == ' ')
+        while (CurrentChar != null && Char.IsWhiteSpace((char)CurrentChar))
 
             Next();
     }
 
-    private bool CurrentCharIsDigit()
+    private void SkipComment()
     {
-        int id = (int)(CurrentChar - '0');
+        while (CurrentChar != null && !(CurrentChar == '>' && SeekNextChar() == ']'))
 
-        return 0 <= id && id <= 9;
+            Next();
+        
+        Next();
+        Next();
     }
 
-    private int Integer()
+    private Token Cadene()
     {
-        int value = 0;
+        string value = "";
 
-        while (CurrentChar != null && CurrentCharIsDigit())
+        Next();
+
+        while (CurrentChar != null && CurrentChar != '\'')
         {
-            value = (value * 10) + (int)(CurrentChar - '0');
+            value += CurrentChar;
             Next();
         }
 
-        return value;
+        Next();
+
+        return new Token(TokenTypes.STRING, value);
+    }
+
+    private Token Number()
+    {
+        string value = "";
+
+        while (CurrentChar != null && char.IsDigit((char)CurrentChar))
+        {
+            value += CurrentChar;
+            Next();
+        }
+
+        if (CurrentChar == '.')
+        {
+            value += CurrentChar;
+            Next();
+
+            while (CurrentChar != null && char.IsDigit((char)CurrentChar))
+            {
+                value += CurrentChar;
+                Next();
+            }
+
+            return new Token(TokenTypes.FLOAT, float.Parse(value));
+        }
+
+        
+        return new Token(TokenTypes.INTEGER, float.Parse(value));
+    }
+
+    public Token Variable()
+    {
+        string name = "";
+
+        while (CurrentChar != null && char.IsLetterOrDigit((char)CurrentChar))
+        {
+            name += CurrentChar;
+            Next();
+        }
+
+        if (key.Keyword.ContainsKey(name))
+
+            return new Token(key.Keyword[name], key.Keyword[name]);
+
+        // if (!key.Keyword.ContainsKey(name))
+
+        //     Error();
+        
+        return new Token(TokenTypes.ID, name);
     }
 
     public Token GetNextToken()
     {
         while (CurrentChar != null)
         {
-            if (CurrentChar == ' ')
+            if (char.IsWhiteSpace((char)CurrentChar))
             {
                 SkipSpace(); 
                 continue;
             }
 
-            if(CurrentCharIsDigit())
+            if (CurrentChar == '[' && SeekNextChar() == '<')
+            {
+                Next();
+                Next();
+                SkipComment();
 
-                return new Token(TokenTypes.INTEGER, Integer());
+                continue;
+            }
+
+            if (CurrentChar == '\'')
+            {
+                return Cadene();
+            }
+
+            if (char.IsLetter((char)CurrentChar))
+            {
+                return Variable();
+            }
+
+            if(char.IsDigit((char)CurrentChar))
+
+                return Number();
 
             switch (CurrentChar)
             {
@@ -78,11 +166,25 @@ public class Lexer
 
                     Next();
 
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.ASSIGN_PLUS, "+=");
+                    }
+
                     return new Token(TokenTypes.PLUS, '+');
 
                 case '-':
 
                     Next();
+
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.ASSIGN_MINUS, "-=");
+                    }
 
                     return new Token(TokenTypes.MINUS, '-');
 
@@ -90,13 +192,47 @@ public class Lexer
 
                     Next();
 
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.ASSIGN_MUL, "*=");
+                    }
+
                     return new Token(TokenTypes.MULT, '*');
 
                 case '/':
 
                     Next();
 
-                    return new Token(TokenTypes.DIV, '/');
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.ASSIGN_DIV, "/=");
+                    }
+
+                    if (CurrentChar == '/')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.INTEGER_DIV, "//");
+                    }
+
+                    return new Token(TokenTypes.FLOAT_DIV, '/');
+
+                case '%':
+
+                    Next();
+
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.ASSIGN_MOD, "%=");
+                    }
+
+                    return new Token(TokenTypes.MOD, '%');
 
                 case '(':
 
@@ -110,17 +246,105 @@ public class Lexer
 
                     return new Token(TokenTypes.R_PARENT, ')');
 
-                case '[':
+                case '{':
 
                     Next();
 
-                    return new Token(TokenTypes.L_BRACKET, '[');
+                    return new Token(TokenTypes.L_KEYS, '{');
 
-                case ']':
+                case '}':
 
                     Next();
 
-                    return new Token(TokenTypes.R_BRACKET, ']');
+                    return new Token(TokenTypes.R_KEYS, '}');
+                
+                case '=':
+                    
+                    Next();
+
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.SAME, "==");
+                    }
+
+                    return new Token(TokenTypes.ASSIGN, "=");
+
+                case '!':
+
+                    Next();
+                    
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.DIFFERENT, "!=");
+                    }
+
+                    return new Token(TokenTypes.NOX, "!");
+                
+                case '<':
+
+                    Next();
+                    
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.LESS_EQUAL, "<=");
+                    }
+
+                    return new Token(TokenTypes.LESS, '<');
+
+                case '>':
+
+                    Next();
+
+                    if (CurrentChar == '=')
+                    {
+                        Next();
+
+                        return new Token(TokenTypes.GREATER_EQUAL, ">=");
+                    }
+
+                    return new Token(TokenTypes.GREATER, '>');
+                
+                case '&':
+
+                    if (SeekNextChar() == '&')
+                    {
+                        Next();
+                        Next();
+
+                        return new Token(TokenTypes.AND, "&&");
+                    }
+
+                    break;
+                
+                case '|':
+
+                    if (SeekNextChar() == '|')
+                    {
+                        Next();
+                        Next();
+
+                        return new Token(TokenTypes.OR, "||");
+                    }
+
+                    break;
+                
+                case ',':
+
+                    Next();
+
+                    return new Token(TokenTypes.COMMA, ',');
+                
+                case ';':
+
+                    Next();
+
+                    return new Token(TokenTypes.SEMI, ';');
             }
 
             Error();
