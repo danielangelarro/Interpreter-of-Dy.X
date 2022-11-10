@@ -72,11 +72,6 @@ empty :
 - **[OK]** _FLOAT_DIV (/)_
 - **[OK]** _INTEGER_DIV (//)_
 - **[OK]** _ASSIGN (=)_
-- **[..]** _ASSIGN_PLUS (+=)_
-- **[..]** _ASSIGN_MINUS (-=)_
-- **[..]** _ASSIGN_MUL (*=)_
-- **[..]** _ASSIGN_MOD (%=)_
-- **[..]** _ASSIGN_DIV (/=)_
 - **[OK]** _SAME (==)_
 - **[OK]** _DIFFERENT (!=)_
 - **[OK]** _LESS (<)_
@@ -101,31 +96,6 @@ empty :
 - **ShowLine**
 - **return**
 
-## **Variables Globals:**
-> 
-> - **states**: Game states
->     - **players**: All players
->         - **monster_cards**: Monsters cards
->         - **magic_cards**: Magic cards
->         - **action_cards**: Action cards
->     - **enemies**: Enemies players
->         - **monster_cards**: Monsters cards
->         - **magic_cards**: Magic cards
->         - **action_cards**: Action cards
->     - **turn**: Turn of game
->     - **win**: Win player
-> - **models**: Cards models
-> - **Internal**: Internal functions of interpreter
->     - **ShowLine**: Show in line a text
->     - **IncrementHP**: Increment the healt points  of monster
->     - **DecrementHP**: Decrement the healt points  of monster
->     - **IncrementMP**: Increment the mana points  of monster
->     - **DecrementMP**: Decrement the mana points  of monster
->     - **IncrementATK**: Increment the attack  of monster
->     - **DecrementATK**: Decrement the attack  of monster
->     - **IncrementDEF**: Increment the deffense  of monster
->     - **DecrementDEF**: Decrement the deffense  of monster
-
 ## EXAMPLE OF CODE
 
 ```
@@ -147,6 +117,6 @@ main{
 
     [< This is a comment >]
 
-    ShowLine(a, b, c);
+    ShowLine(a + ' ' + b + ' ' + c);
 }
 ```
